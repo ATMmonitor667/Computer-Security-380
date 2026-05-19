@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vigenere Cipher</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f8f7f4; --surface: #ffffff; --surface2: #f1efe8;
+      --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+      --text: #1a1a18; --text2: #5f5e5a; --text3: #9a9890;
+      --accent: #185fa5; --acc-bg: #e6f1fb; --acc-b: rgba(24,95,165,0.35);
+      --green: #0f6e56; --grn-bg: #e1f5ee; --mono: 'Courier New', monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:#16161a; --surface:#1f1f23; --surface2:#2a2a2f;
+        --border:rgba(255,255,255,0.1); --border2:rgba(255,255,255,0.2);
+        --text:#f0ede8; --text2:#a0a09a; --text3:#606058;
+        --accent:#5ba3f5; --acc-bg:rgba(91,163,245,0.12);
+        --acc-b:rgba(91,163,245,0.35);
+        --green:#1d9e75; --grn-bg:rgba(29,158,117,0.15);
+      }
+    }
+    body { font-family: Georgia,serif; background:var(--bg); color:var(--text);
+           min-height:100vh; display:flex; justify-content:center;
+           padding:2rem 1rem 4rem; }
+    .container { width:100%; max-width:760px; }
+    h1 { font-size:26px; font-weight:normal; margin-bottom:4px; }
+    .sub { font-size:14px; color:var(--text2); font-family:sans-serif; margin-bottom:2rem; }
+    .controls { display:flex; gap:16px; flex-wrap:wrap; align-items:center;
+                background:var(--surface); border:0.5px solid var(--border);
+                border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.25rem; }
+    .controls label { font-size:13px; color:var(--text2); font-family:sans-serif; }
+    input[type=text] { font-family:var(--mono); font-size:14px; padding:6px 10px;
+                       border-radius:8px; border:0.5px solid var(--border2);
+                       background:var(--surface2); color:var(--text);
+                       outline:none; text-transform:uppercase; width:160px; }
+    .mode-toggle { display:flex; gap:3px; background:var(--surface2);
+                   border-radius:8px; padding:3px; }
+    .mbtn { padding:5px 16px; font-size:13px; border:none; border-radius:6px;
+            background:transparent; color:var(--text2); cursor:pointer; }
+    .mbtn.active { background:var(--accent); color:#fff; font-weight:500; }
+    .io-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:1.25rem; }
+    .io-box { display:flex; flex-direction:column; gap:6px; }
+    .lbl { font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+           color:var(--text3); font-family:sans-serif; }
+    textarea { width:100%; height:90px; resize:none; font-family:var(--mono);
+               font-size:14px; padding:10px 12px; border-radius:8px;
+               border:0.5px solid var(--border2); background:var(--surface);
+               color:var(--text); outline:none; }
+    textarea[readonly] { background:var(--surface2); color:var(--text2); }
+    .trace { background:var(--surface); border:0.5px solid var(--border);
+             border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.25rem; }
+    .trace-grid { display:flex; gap:3px; flex-wrap:wrap; margin-top:8px; }
+    .tp { display:flex; flex-direction:column; align-items:center;
+          font-family:var(--mono); padding:3px 5px; border-radius:3px;
+          background:var(--surface2); border:0.5px solid var(--border);
+          min-width:28px; }
+    .tp .p { font-size:8px; color:var(--text3); }
+    .tp .k { font-size:8px; color:var(--green); }
+    .tp .c { font-size:13px; font-weight:bold; color:var(--text); }
+    .tp.skip { background:transparent; border-color:transparent; }
+    .tp.skip .p, .tp.skip .c { color:var(--text3); }
+    .tableau-wrap { overflow-x:auto; margin-bottom:1.25rem; }
+    table { border-collapse:collapse; font-family:var(--mono); font-size:11px; }
+    td, th { width:21px; height:21px; text-align:center;
+             border:0.5px solid var(--border); }
+    th { background:var(--surface2); color:var(--text2); font-weight:500; }
+    td { color:var(--text); background:var(--surface); }
+    td.hl-col { background:var(--acc-bg); color:var(--accent); }
+    td.hl-row { background:var(--grn-bg); color:var(--green); }
+    td.hl-cell { background:var(--accent); color:#fff; font-weight:bold; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Vigenere Cipher</h1>
+  <p class="sub">Polyalphabetic substitution cipher</p>
+
+  <div class="controls">
+    <label>Key</label>
+    <input type="text" id="keyIn" value="SECRET" oninput="go()" maxlength="20">
+    <div class="mode-toggle">
+      <button class="mbtn active" id="bEnc" onclick="setMode('encrypt')">Encrypt</button>
+      <button class="mbtn" id="bDec" onclick="setMode('decrypt')">Decrypt</button>
+    </div>
+  </div>
+
+  <div class="io-grid">
+    <div class="io-box">
+      <p class="lbl" id="inLbl">Plaintext</p>
+      <textarea id="inp" oninput="go()">Hello World</textarea>
+    </div>
+    <div class="io-box">
+      <p class="lbl" id="outLbl">Ciphertext</p>
+      <textarea id="out" readonly></textarea>
+    </div>
+  </div>
+
+  <div class="trace">
+    <p class="lbl">Character trace — plain / key / result</p>
+    <div class="trace-grid" id="trace"></div>
+  </div>
+
+  <p class="lbl" style="margin-bottom:8px">Vigenere tableau</p>
+  <div class="tableau-wrap">
+    <table id="tbl"></table>
+  </div>
+</div>
+
+<script>
+const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+let mode = 'encrypt';
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('bEnc').className = 'mbtn' + (m==='encrypt' ? ' active' : '');
+  document.getElementById('bDec').className = 'mbtn' + (m==='decrypt' ? ' active' : '');
+  document.getElementById('inLbl').textContent  = m==='encrypt' ? 'Plaintext'  : 'Ciphertext';
+  document.getElementById('outLbl').textContent = m==='encrypt' ? 'Ciphertext' : 'Plaintext';
+  go();
+}
+
+function cleanKey(k) { return k.toUpperCase().replace(/[^A-Z]/g, ''); }
+
+function vigenere(text, key, enc) {
+  const k = cleanKey(key);
+  if (!k.length) return text;
+  let ki = 0;
+  return text.split('').map(ch => {
+    const pi = A.indexOf(ch.toUpperCase());
+    if (pi === -1) return ch;
+    const shift = A.indexOf(k[ki % k.length]);
+    ki++;
+    const ci = enc ? (pi + shift) % 26 : (pi - shift + 26) % 26;
+    return ch === ch.toLowerCase() ? A[ci].toLowerCase() : A[ci];
+  }).join('');
+}
+
+function buildTableau() {
+  const tbl = document.getElementById('tbl');
+  tbl.innerHTML = '';
+  const hdr = document.createElement('tr');
+  hdr.innerHTML = '<th></th>' + A.split('').map(c => '<th>' + c + '</th>').join('');
+  tbl.appendChild(hdr);
+  for (let r = 0; r < 26; r++) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<th>' + A[r] + '</th>';
+    for (let c = 0; c < 26; c++) {
+      const td = document.createElement('td');
+      td.id = 'c_' + r + '_' + c;
+      td.textContent = A[(r + c) % 26];
+      tr.appendChild(td);
+    }
+    tbl.appendChild(tr);
+  }
+}
+
+function go() {
+  const text = document.getElementById('inp').value;
+  const key  = document.getElementById('keyIn').value;
+  const k    = cleanKey(key);
+  document.getElementById('out').value = vigenere(text, key, mode === 'encrypt');
+  document.querySelectorAll('td').forEach(td => { td.className = ''; });
+  let html = '', ki = 0;
+  const cols = new Set(), rows = new Set(), cells = [];
+  for (const ch of text) {
+    const pi = A.indexOf(ch.toUpperCase());
+    if (pi === -1) {
+      const lbl = ch === ' ' ? '·' : ch;
+      html += '<div class="tp skip"><span class="p">' + lbl + '</span><span class="k"> </span><span class="c">' + lbl + '</span></div>';
+    } else if (k.length) {
+      const kch   = k[ki % k.length];
+      const shift = A.indexOf(kch);
+      const ci    = mode === 'encrypt' ? (pi + shift) % 26 : (pi - shift + 26) % 26;
+      const row   = mode === 'encrypt' ? pi : ci;
+      cols.add(shift); rows.add(row); cells.push([row, shift]);
+      html += '<div class="tp"><span class="p">' + ch.toUpperCase() + '</span><span class="k">' + kch + '</span><span class="c">' + A[ci] + '</span></div>';
+      ki++;
+    }
+  }
+  document.getElementById('trace').innerHTML = html;
+  cols.forEach(c => { for (let r=0;r<26;r++) { const td=document.getElementById('c_'+r+'_'+c); if(td&&!td.className)td.className='hl-col'; }});
+  rows.forEach(r => { for (let c=0;c<26;c++) { const td=document.getElementById('c_'+r+'_'+c); if(td&&td.className!=='hl-cell')td.className='hl-row'; }});
+  cells.forEach(([r,c]) => { const td=document.getElementById('c_'+r+'_'+c); if(td)td.className='hl-cell'; });
+}
+
+buildTableau();
+go();
+</script>
+</body>
+</html>
